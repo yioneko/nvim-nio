@@ -180,7 +180,7 @@ end
 ---@nodoc
 function nio.tasks.wrap(func, argc, opts)
   opts = vim.tbl_extend("keep", opts or {}, { strict = true })
-  vim.validate({ func = { func, "function" }, argc = { argc, "number" } })
+  vim.validate({ func = { func, "function" }, argc = { argc, "number", true } })
   local protected = function(...)
     local args = { ... }
     local cb = args[argc]
@@ -192,12 +192,25 @@ function nio.tasks.wrap(func, argc, opts)
     end, unpack(args, 1, argc))
   end
 
+  local variable_argc = false
+  if argc == nil then
+    local finfo = debug.getinfo(func, "u")
+    variable_argc = finfo.isvararg
+    if not variable_argc then
+      argc = finfo.nparams
+    end
+  end
+
   return function(...)
     if not current_non_main_co() then
       if opts.strict then
         error("Cannot call async function from non-async context")
       end
       return func(...)
+    end
+
+    if variable_argc then
+      argc = select("#", ...) + 1
     end
 
     local ret = { coroutine.yield(argc, protected, ...) }
@@ -207,6 +220,22 @@ function nio.tasks.wrap(func, argc, opts)
     end
     return unpack(ret, 2, table.maxn(ret))
   end
+end
+
+function nio.tasks.call_with_opts(func, opts, ...)
+  opts = vim.tbl_extend("keep", opts or {}, { strict = true })
+  if not current_non_main_co() then
+    if opts.strict then
+      error("Cannot call async function from non-async context")
+    end
+    return func(...)
+  end
+  local argc = select("#", ...) + 1
+  return coroutine.yield(argc, func, ...)
+end
+
+function nio.tasks.call(func, ...)
+  return nio.tasks.call_with_opts(func, {}, ...)
 end
 
 --- Get the current running task

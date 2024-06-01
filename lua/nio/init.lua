@@ -60,7 +60,7 @@ end
 ---   end)
 --- ```
 ---@param func function A callback style function to be converted. The last argument must be the callback.
----@param argc integer The number of arguments of func. Must be included.
+---@param argc? integer The number of arguments of func. Must be included.
 ---@param opts? nio.WrapOpts Additional options.
 ---@return function Returns an async function
 function nio.wrap(func, argc, opts)
@@ -82,6 +82,14 @@ end
 ---@param argc? integer The number of arguments of func. Must be included if there are arguments.
 function nio.create(func, argc)
   return tasks.create(func, argc)
+end
+
+function nio.call_with_opts(func, opts, ...)
+  return tasks.call_with_opts(func, opts, ...)
+end
+
+function nio.call(func, ...)
+  return tasks.call(func, ...)
 end
 
 --- Run a collection of async functions concurrently and return when
